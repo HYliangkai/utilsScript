@@ -1,0 +1,1 @@
+export { default as add_version } from './addVersion'//给package添加版本号
