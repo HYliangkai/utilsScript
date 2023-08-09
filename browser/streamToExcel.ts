@@ -2,7 +2,7 @@
 
 export default function streamToExcel(data: any) {
   const blob = new Blob([data], {
-    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=utf-8'
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=utf-8'//key
   })
   const url = window.URL.createObjectURL(blob)
   const alink = document.createElement('a')

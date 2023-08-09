@@ -1,83 +1,29 @@
 /**
-  @description 原生websocket的一个有效配置,适用于简单的ws连接
+  @description websocket的一个有效配置,适用于简单的ws连接
+*/
+import ReconnectingWebSocket from 'reconnecting-websocket'
+let Socket
+let ws_event_name: string
+/**
+ * 建立websocket连接
+ * @param {string} url ws连接地址
+ * @param {string} event_name 接收消息的事件名
  */
-let socket: WebSocket | null = null //全局的socket实例
-let setInterva_wesocket_push: number | null | NodeJS.Timer = null //心跳检测定时器
-let wsuri: string = '' //连接的url
-
-
-/** @description 建立连接 */
-export const create_socket = (url: string) => {
-  wsuri = url
-  socket && socket?.close()
-  if (!socket) {
-    socket = new WebSocket(wsuri)
-    socket.onopen = open
-    socket.onmessage = message
-    socket.onerror = error
-    socket.onclose = close
-  }
+export const createSocket = (url, event_name = 'ws_message') => {
+  ws_event_name = event_name
+  Socket && Socket.close()
+  console.log('建立websocket连接')
+  Socket = new ReconnectingWebSocket(url)
+  Socket.timeoutInterval = 1000//检测断线的时间
+  Socket.onmessage = onmessageWS
 }
-
-/** @description 发送消息 */
-export const send_message = (message: unknown) => {
-  if (!socket) return
-  if (socket.readyState === 0) { loop_connecting(message) }
-  else if (socket.readyState === 1) { socket.send(JSON.stringify(message)) }
-  else if (socket.readyState === 3) {
-    socket.close()
-    create_socket(wsuri)
-  }
-}
-
-/** @description 循环发送心跳检测 */
-const loop_send_ping = (time = 5000, ping_message = 'ping') => {
-  if (setInterva_wesocket_push && socket) {
-    clearInterval(setInterva_wesocket_push)
-    socket.send(ping_message)
-    setInterva_wesocket_push = setInterval(() => { socket?.send(ping_message) }, time)
-  }
-}
-
-/** @description 收到消息:挂载在全局事件`wsmag`上 */
-const message = (e: any) => {
+/**WS数据接收统一处理 */
+const onmessageWS = (e) => {
   window.dispatchEvent(
-    new CustomEvent('wsmag', { detail: e.data })
+    new CustomEvent(ws_event_name, {
+      detail: {
+        data: e.data,
+      },
+    }),
   )
 }
-
-
-
-/** @description 循环重连,等待连接成功再发送数据 */
-const loop_connecting = (message: unknown) => {
-  setTimeout(() => {
-    if (socket?.readyState == 0) {
-      loop_connecting(message)
-    } else {
-      socket?.send(JSON.stringify(message))
-    }
-  }, 1000);
-}
-
-/** @description 连接成功 */
-const open = () => { loop_send_ping() }
-
-/** @description 连接失败->断线重连 */
-const error = () => {
-  socket?.close()
-  clearInterval(setInterva_wesocket_push as any)
-  if (socket?.readyState != 3) {
-    socket = null
-    create_socket(wsuri)
-  }
-}
-
-/** @description 断开连接->断线重连 */
-const close = () => {
-  clearInterval(setInterva_wesocket_push as any)
-  if (socket?.readyState != 2) {
-    socket = null
-    create_socket(wsuri)
-  }
-}
-
